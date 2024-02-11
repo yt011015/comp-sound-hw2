@@ -3,13 +3,35 @@
     <head>
         <meta charset="utf-8">
         <title> WebAudio Synthesizer </title>
-
     </head>
 
     <body>
-        <button id="startButton"> Start/Reset </button>
-        <button id="sineButton"> Sine </button>
-        <button id="sawtoothButton"> Sawtooth </button>
+        <button id="startButton"> Start </button>
+
+        <h3> Choose a Waveform </h3>
+        <input type="radio" name="waveform" value="sine">
+        <label for="sine">Sine</label><br>
+        <input type="radio" name="waveform" value="sawtooth">
+        <label for="sawtooth">Sawtooth</label><br>
+
+        <h3> Select Synthesis Mode(s) </h3>
+        <input type="checkbox" name="synthesisMode" id="additiveCheckbox">
+        <label for="additive">Additive</label><br>
+        <input type="checkbox" name="synthesisMode" id="amCheckbox">
+        <label for="am">AM</label><br>
+        <input type="checkbox" name="synthesisMode" id="fmCheckbox">
+        <label for="fm">FM</label><br>
+
+        <h3>Control Additive Partial Count (1 - 7) </h3>
+        <input type="range" min="1" max="7" value="3" step="1" oninput="updatePartialCount(this.value)">
+
+        <h3>Control AM/FM Modulator Frequency (1 - 1000)</h3>
+        <input type="range" min="1" max="1000" oninput="updateFreq(this.value)">
+
+        <h3>Control FM Modulator Index (1 - 1000)</h3>
+        <input type="range" min="1" max="1000" oninput="updateIndex(this.value)">
+
+
     </body>
 
     <script src="main.js"> </script>

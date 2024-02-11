@@ -1,11 +1,18 @@
 var audioCtx;
-var oscType = 'sine';
+var waveform;
+var synthesisMode;
+var partialCount = 3;
+var modulatorFreq;
+var modulationIndex;
 var globalGain;
 const maxOverallGain = 0.8;
-var activeOscillators = {}
-const startButton = document.querySelector('#startButton')
-const sineButton = document.querySelector('#sineButton')
-const sawtoothButton = document.querySelector('#sawtoothButton')
+var activeOscillators = {};
+const startButton = document.querySelector('#startButton');
+const waveformButtons = document.querySelectorAll('input[name="waveform"]');
+const synthesisModeButtons = document.querySelectorAll('input[name="synthesisMode"]');
+const additiveCheckbox = document.getElementById("additiveCheckbox");
+const amCheckbox = document.getElementById("amCheckbox");
+const fmCheckbox = document.getElementById("fmCheckbox");
 
 // Hard-coding ADSR envelope 
 var attackTime = 0.2;
@@ -43,22 +50,44 @@ const keyboardFrequencyMap = {
 window.addEventListener('keydown', keyDown, false);
 window.addEventListener('keyup', keyUp, false);
 
-startButton.addEventListener("click", initializeAudioContext); 
-sineButton.addEventListener("click", () => setOscillatorWaveform('sine'));
-sawtoothButton.addEventListener("click", () => setOscillatorWaveform('sawtooth'));
+startButton.addEventListener("click", initializeAudioContext, false); 
+waveformButtons.forEach(button => {
+    button.addEventListener("change", setWaveform);
+});
+synthesisModeButtons.forEach(button => {
+    button.addEventListener("change", setSynthesisMode);
+});
 
 function initializeAudioContext() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        globalGain = audioCtx.createGain(); //this will control the volume of all notes
+        globalGain.gain.setValueAtTime(0.8, audioCtx.currentTime)
+        globalGain.connect(audioCtx.destination);
+        return;
     }
 
-    globalGain = audioCtx.createGain(); //this will control the volume of all notes
-    globalGain.gain.setValueAtTime(0.8, audioCtx.currentTime)
-    globalGain.connect(audioCtx.destination);
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+
+    if (audioCtx.state === 'running') {
+        audioCtx.suspend();
+    }
 }
 
-function setOscillatorWaveform(waveform) {
-    oscType = waveform;
+function setWaveform(event) {
+    const selectedRadioButton = event.target;
+    if (selectedRadioButton.checked) {
+        waveform = selectedRadioButton.value;
+    }
+}
+
+function setSynthesisMode(event) {
+    const selectedRadioButton = event.target;
+    if (selectedRadioButton.checked) {
+        synthesisMode = selectedRadioButton.value;
+    }
 }
 
 function keyDown(event) {
@@ -79,30 +108,119 @@ function keyUp(event) {
 }
 
 function playNote(key) {
-    oscillators = []
-    const osc1 = audioCtx.createOscillator();
-    const osc2 = audioCtx.createOscillator();
-    const osc3 = audioCtx.createOscillator();
-    oscillators.push(osc1);
-    oscillators.push(osc2);
-    oscillators.push(osc3);
-
-    oscillators.foreach(function(osc) {
-        
-    })
-
-    osc.frequency.setValueAtTime(keyboardFrequencyMap[key], audioCtx.currentTime)
-    osc.type = oscType; //choose your favorite waveform
 
     const gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.4, audioCtx.currentTime + attackTime); // Attack
     gainNode.gain.setTargetAtTime(0.2, audioCtx.currentTime + attackTime, decayTime); // Decay
-    osc.connect(gainNode).connect(globalGain)
-    osc.start();
-    activeOscillators[key] = { osc, gainNode };
 
+    freq = keyboardFrequencyMap[key];
+    oscillators = [];
+
+    // Additive Synthesis
+    function additive() {
+        for (let i = 0; i < partialCount; i++) {
+            osc = audioCtx.createOscillator();
+            osc.frequency.value = freq * (i + 1) + Math.random() * 15
+            osc.type = waveform;
+            osc.connect(gainNode).connect(globalGain);
+            oscillators.push(osc);
+            osc.start();
+
+            if (i == 0 || i == 2) {
+                var lfo = audioCtx.createOscillator();
+                lfo.frequency.value = 0.5;
+                lfoGain = audioCtx.createGain();
+                lfoGain.gain.value = 8;
+                lfo.connect(lfoGain).connect(osc.frequency);
+                lfo.start();
+            }
+        }
+        
+    }
+
+    function amplitude_modulation() {
+        var carrier = audioCtx.createOscillator();
+        modulatorFreq = audioCtx.createOscillator();
+        modulatorFreq.frequency.value = 100;
+        carrier.frequency.value = freq;
+
+        const modulated = audioCtx.createGain();
+        const depth = audioCtx.createGain();
+        depth.gain.value = 0.5 //scale modulator output to [-0.5, 0.5]
+        modulated.gain.value = 1.0 - depth.gain.value; //a fixed value of 0.5
+
+        modulatorFreq.connect(depth).connect(modulated.gain); //.connect is additive, so with [-0.5,0.5] and 0.5, the modulated signal now has output gain at [0,1]
+        carrier.connect(modulated)
+        modulated.connect(gainNode).connect(globalGain);
+        
+        carrier.start();
+        modulatorFreq.start();
+
+        var lfo = audioCtx.createOscillator();
+        lfo.frequency.value = 2;
+        lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 300;
+        lfo.connect(lfoGain).connect(modulatorFreq.frequency);
+        lfo.start();
+    }
+
+    function frequency_modulation() {
+        var carrier = audioCtx.createOscillator();
+        modulatorFreq = audioCtx.createOscillator();
+        carrier.frequency.value = freq;
+
+        modulationIndex = audioCtx.createGain();
+        modulationIndex.gain.value = 100;
+        modulatorFreq.frequency.value = 100;
+
+        modulatorFreq.connect(modulationIndex);
+        modulationIndex.connect(carrier.frequency)
+        
+        carrier.connect(gainNode).connect(globalGain);
+
+        carrier.start();
+        modulatorFreq.start();
+
+        var lfo = audioCtx.createOscillator();
+        lfo.frequency.value = 2;
+        lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 300;
+        lfo.connect(lfoGain).connect(modulatorFreq.frequency);
+        lfo.start();
+    }
+
+    if (additiveCheckbox.checked) {
+        additive();
+    }
+    if (amCheckbox.checked) {
+        amplitude_modulation();
+    }
+    if (fmCheckbox.checked) {
+        frequency_modulation();
+    }
+
+    activeOscillators[key] = { oscillators, gainNode };
     updateGlobalGain();
+};
+
+function updatePartialCount(val) {
+    if (additiveCheckbox.checked) {
+        partialCount = val;
+    }
 }
+
+function updateFreq(val) {
+    if (amCheckbox.checked || fmCheckbox.checked) {
+        modulatorFreq.frequency.value = val;
+    }
+};
+
+function updateIndex(val) {
+    if (fmCheckbox.checked) {
+        modulationIndex.gain.value = val;
+    }
+};
 
 function updateGlobalGain() {
     var gainSum = 0;
@@ -111,4 +229,4 @@ function updateGlobalGain() {
     }
     const newGlobalGain = maxOverallGain / Math.max(1, gainSum);
     globalGain.gain.setValueAtTime(newGlobalGain, audioCtx.currentTime);
-}
+};
