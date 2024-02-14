@@ -2,36 +2,56 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title> WebAudio Synthesizer </title>
+        <link rel="stylesheet" href="style.css">
     </head>
 
     <body>
-        <button id="startButton"> Start </button>
+        <button class="pretty-button cursive-text" id="startButton"> Create audio context </button>
 
-        <h3> Choose a Waveform </h3>
-        <input type="radio" name="waveform" value="sine">
-        <label for="sine">Sine</label><br>
-        <input type="radio" name="waveform" value="sawtooth">
-        <label for="sawtooth">Sawtooth</label><br>
+        <div id="waveform" class=>
+            <h3 class="cursive-text"> Choose a Waveform </h3>
+            <input type="radio" name="waveform" value="sine">
+            <label class="cursive-text" for="sine">Sine</label><br>
+            <input type="radio" name="waveform" value="sawtooth">
+            <label class="cursive-text" for="sawtooth">Sawtooth</label><br>
+        </div>
+        
 
-        <h3> Select Synthesis Mode(s) </h3>
+
+        <h3 class="cursive-text"> Select Synthesis Mode(s) </h3>
+        <input type="checkbox" name="synthesisMode" id="nonSynthesisCheckbox">
+        <label class="cursive-text" for="nonsynthesis">No Synthesis</label><br>
         <input type="checkbox" name="synthesisMode" id="additiveCheckbox">
-        <label for="additive">Additive</label><br>
+        <label class="cursive-text" for="additive">Additive</label><br>
         <input type="checkbox" name="synthesisMode" id="amCheckbox">
-        <label for="am">AM</label><br>
+        <label class="cursive-text" for="am">AM</label><br>
         <input type="checkbox" name="synthesisMode" id="fmCheckbox">
-        <label for="fm">FM</label><br>
+        <label class="cursive-text" for="fm">FM</label><br>
 
-        <h3>Control Additive Partial Count (1 - 7) </h3>
-        <input type="range" min="1" max="7" value="3" step="1" oninput="updatePartialCount(this.value)">
+        
 
-        <h3>Control AM/FM Modulator Frequency (1 - 1000)</h3>
-        <input type="range" min="1" max="1000" oninput="updateFreq(this.value)">
+        <h3 class="cursive-text"> Activate or Deactivate LFOs </h3>
+        <input type="checkbox" name="lfo" id="lfoCheckbox">
+        <label class="cursive-text" for="lfo">LFO</label><br>
 
-        <h3>Control FM Modulator Index (1 - 1000)</h3>
-        <input type="range" min="1" max="1000" oninput="updateIndex(this.value)">
+        <h3 class="cursive-text">Control Additive Partial Count (1 - 7) </h3>
+        <input id="partialCount" type="range" min="1" max="7" value="3" step="1" oninput="updatePartialCount(this.value)">
 
+        <h3 class="cursive-text">Control AM Modulator Frequency (1 - 1000)</h3>
+        <input id="amFrequency" type="range" min="1" max="1000" oninput="updateFreqAM(this.value)">
 
+        <h3 class="cursive-text">Control FM Modulator Frequency (1 - 1000)</h3>
+        <input id="fmFrequency" type="range" min="1" max="1000" oninput="updateFreqFM(this.value)">
+
+        <h3 class="cursive-text">Control FM Modulator Index (1 - 1000)</h3>
+        <input id="fmIndex" type="range" min="1" max="1000" oninput="updateIndex(this.value)">
+
+        <div class="emoji-container">
+            <span id="textDisplay">Your day will be...</span>
+            <span id="emojiDisplay"></span>
+        </div>
     </body>
 
     <script src="main.js"> </script>
